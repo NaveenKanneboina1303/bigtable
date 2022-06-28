@@ -21,7 +21,7 @@ import java.io.IOException;
 
 public class BigTable {
 
-    private static final byte[] TABLE_NAME = Bytes.toBytes(requiredProperty("bigtable"));
+    private static final byte[] TABLE_NAME = Bytes.toBytes(requiredProperty("bigtable.tableName"));
     private static final byte[] COLUMN_FAMILY_NAME = Bytes.toBytes("cf1");
     private static final byte[] COLUMN_FAMILY_NAME2 = Bytes.toBytes("cf2");
     private static final byte[] COLUMN_NAME = Bytes.toBytes("column1");
@@ -39,7 +39,7 @@ public class BigTable {
             try {
 
                 if (admin.tableExists(TableName.valueOf(TABLE_NAME))) {
-                    print("Table " + TABLE_NAME + " already exists");
+                    print("Table " + TableName.valueOf(TABLE_NAME) + " already exists");
                 } else {
                     HTableDescriptor descriptor = new HTableDescriptor(TableName.valueOf(TABLE_NAME));
                     descriptor.addFamily(new HColumnDescriptor(COLUMN_FAMILY_NAME));
@@ -57,6 +57,31 @@ public class BigTable {
                     put.addColumn(COLUMN_FAMILY_NAME, COLUMN_NAME, Bytes.toBytes(Records[i]));
                     table.put(put);
                 }
+
+                print("Reading Records from table ");
+                for (int i = 0; i < Records.length; i++) {
+                    String rowKey1 = "row" + i;
+                    Result getResult = table.get(new Get(Bytes.toBytes(rowKey1)));
+                    String val = Bytes.toString(getResult.getValue(COLUMN_FAMILY_NAME, COLUMN_NAME));
+                    System.out.printf("\t%s = %s\n", rowKey1, val);
+
+                }
+
+                Scan scan = new Scan();
+                scan.addColumn(COLUMN_FAMILY_NAME,COLUMN_NAME);
+
+                print("Scan for all Records");
+                ResultScanner scanner = table.getScanner(scan);
+                for (Result row : scanner) {
+                    byte[] valueBytes = row.getValue(COLUMN_FAMILY_NAME, COLUMN_NAME);
+                    System.out.println('\t' + Bytes.toString(valueBytes));
+                }
+
+                Delete delete = new Delete(Bytes.toBytes("row0"));
+//                delete.addColumn(COLUMN_FAMILY_NAME, COLUMN_NAME);
+//                delete.addFamily(COLUMN_FAMILY_NAME, 2l);
+//                delete.addFamilyVersion(COLUMN_FAMILY_NAME, 2l);
+                table.delete(delete);
 
                 String rowKey = "row0";
 
@@ -86,29 +111,6 @@ public class BigTable {
                 put3.addColumn(COLUMN_FAMILY_NAME, COLUMN_NAME2, Bytes.toBytes("col1"));
                 put3.addColumn(COLUMN_FAMILY_NAME2, COLUMN_NAME2, Bytes.toBytes("col2"));
                 table.put(put3);
-
-                print("Write Records to the table is done ");
-                print("Reading Records from table ");
-                Result getResult = table.get(new Get(Bytes.toBytes(rowKey)));
-                String greeting = Bytes.toString(getResult.getValue(COLUMN_FAMILY_NAME, COLUMN_NAME));
-                System.out.println("Get a single record by row key");
-                System.out.printf("\t%s = %s\n", rowKey, greeting);
-
-                Scan scan = new Scan();
-//                scan.addColumn(COLUMN_FAMILY_NAME,COLUMN_NAME);
-
-                print("Scan for all Records");
-                ResultScanner scanner = table.getScanner(scan);
-                for (Result row : scanner) {
-                    byte[] valueBytes = row.getValue(COLUMN_FAMILY_NAME, COLUMN_NAME);
-                    System.out.println('\t' + Bytes.toString(valueBytes));
-                }
-
-                Delete delete = new Delete(Bytes.toBytes("row0"));
-//                delete.addColumn(COLUMN_FAMILY_NAME, COLUMN_NAME);
-//                delete.addFamily(COLUMN_FAMILY_NAME, 2l);
-//                delete.addFamilyVersion(COLUMN_FAMILY_NAME, 2l);
-                table.delete(delete);
 
 //        print("Delete the table");
 //        admin.disableTable(table.getName());
