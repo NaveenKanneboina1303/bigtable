@@ -21,7 +21,7 @@ import java.io.IOException;
 
 public class BigTable {
 
-    private static final byte[] TABLE_NAME = Bytes.toBytes(requiredProperty("bigtable1"));
+    private static final byte[] TABLE_NAME = Bytes.toBytes(requiredProperty("bigtable"));
     private static final byte[] COLUMN_FAMILY_NAME = Bytes.toBytes("cf1");
     private static final byte[] COLUMN_FAMILY_NAME2 = Bytes.toBytes("cf2");
     private static final byte[] COLUMN_NAME = Bytes.toBytes("column1");
