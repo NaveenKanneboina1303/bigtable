@@ -1,6 +1,8 @@
 
 import com.google.cloud.bigtable.hbase.BigtableConfiguration;
 
+import java.util.List;
+import java.util.ArrayList;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.TableName;
@@ -12,21 +14,24 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.Table;
+import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import java.io.IOException;
 
-public class HelloWorld {
+public class BigTable {
 
-    private static final byte[] TABLE_NAME = Bytes.toBytes(requiredProperty("bigtable.tableName"));
+    private static final byte[] TABLE_NAME = Bytes.toBytes(requiredProperty("bigtable1"));
     private static final byte[] COLUMN_FAMILY_NAME = Bytes.toBytes("cf1");
+    private static final byte[] COLUMN_FAMILY_NAME2 = Bytes.toBytes("cf2");
     private static final byte[] COLUMN_NAME = Bytes.toBytes("column1");
+    private static final byte[] COLUMN_NAME2 = Bytes.toBytes("column2");
 
-    private static final String[] GREETINGS = {
+    private static final String[] Records = {
             "Hello World!", "Hello Cloud Bigtable!", "Hello HBase!"
     };
 
-    private static void doHelloWorld(String projectId, String instanceId) {
+    private static void execute(String projectId, String instanceId) {
 
         try (Connection connection = BigtableConfiguration.connect(projectId, instanceId)) {
             Admin admin = connection.getAdmin();
@@ -38,35 +43,72 @@ public class HelloWorld {
                 } else {
                     HTableDescriptor descriptor = new HTableDescriptor(TableName.valueOf(TABLE_NAME));
                     descriptor.addFamily(new HColumnDescriptor(COLUMN_FAMILY_NAME));
+                    descriptor.addFamily(new HColumnDescriptor(COLUMN_FAMILY_NAME2));
                     print("Create table " + descriptor.getNameAsString());
                     admin.createTable(descriptor);
                 }
 
                 Table table = connection.getTable(TableName.valueOf(TABLE_NAME));
 
-                print("Write some greetings to the table");
-                for (int i = 0; i < GREETINGS.length; i++) {
-                    String rowKey = "greeting" + i;
+                print("Write some Records to the table");
+                for (int i = 0; i < Records.length; i++) {
+                    String rowKey = "row" + i;
                     Put put = new Put(Bytes.toBytes(rowKey));
-                    put.addColumn(COLUMN_FAMILY_NAME, COLUMN_NAME, Bytes.toBytes(GREETINGS[i]));
+                    put.addColumn(COLUMN_FAMILY_NAME, COLUMN_NAME, Bytes.toBytes(Records[i]));
                     table.put(put);
                 }
 
-                String rowKey = "greeting0";
+                String rowKey = "row0";
+
+                //Inserting a row with column.
+                Put put1 = new Put(Bytes.toBytes(rowKey));
+                put1.addColumn(COLUMN_FAMILY_NAME, COLUMN_NAME, Bytes.toBytes("Inserting a row with column"));
+                table.put(put1);
+
+                //Inserting a row with multiple columns.
+                Put put2 = new Put(Bytes.toBytes(rowKey));
+                put2.addColumn(COLUMN_FAMILY_NAME, COLUMN_NAME, Bytes.toBytes("col1"));
+                put2.addColumn(COLUMN_FAMILY_NAME, COLUMN_NAME2, Bytes.toBytes("col2"));
+                table.put(put2);
+
+                //Inserting multiple rows at one time
+                List<Put> puts = new ArrayList<Put>();
+                Put put11 = new Put(Bytes.toBytes(rowKey));
+                put11.addColumn(COLUMN_FAMILY_NAME, COLUMN_NAME, Bytes.toBytes("col2"));
+                puts.add(put11);
+                Put put22 = new Put(Bytes.toBytes("greeting2"));
+                put22.addColumn(COLUMN_FAMILY_NAME, COLUMN_NAME2, Bytes.toBytes("col2"));
+                puts.add(put22);
+                table.put(puts);
+
+                //Inserting a row with multiple columnFamily
+                Put put3 = new Put(Bytes.toBytes(rowKey));
+                put3.addColumn(COLUMN_FAMILY_NAME, COLUMN_NAME2, Bytes.toBytes("col1"));
+                put3.addColumn(COLUMN_FAMILY_NAME2, COLUMN_NAME2, Bytes.toBytes("col2"));
+                table.put(put3);
+
+                print("Write Records to the table is done ");
+                print("Reading Records from table ");
                 Result getResult = table.get(new Get(Bytes.toBytes(rowKey)));
                 String greeting = Bytes.toString(getResult.getValue(COLUMN_FAMILY_NAME, COLUMN_NAME));
-                System.out.println("Get a single greeting by row key");
+                System.out.println("Get a single record by row key");
                 System.out.printf("\t%s = %s\n", rowKey, greeting);
 
                 Scan scan = new Scan();
-                scan.addColumn(COLUMN_FAMILY_NAME,COLUMN_NAME);
+//                scan.addColumn(COLUMN_FAMILY_NAME,COLUMN_NAME);
 
-                print("Scan for all greetings:");
+                print("Scan for all Records");
                 ResultScanner scanner = table.getScanner(scan);
                 for (Result row : scanner) {
                     byte[] valueBytes = row.getValue(COLUMN_FAMILY_NAME, COLUMN_NAME);
                     System.out.println('\t' + Bytes.toString(valueBytes));
                 }
+
+                Delete delete = new Delete(Bytes.toBytes("row0"));
+//                delete.addColumn(COLUMN_FAMILY_NAME, COLUMN_NAME);
+//                delete.addFamily(COLUMN_FAMILY_NAME, 2l);
+//                delete.addFamilyVersion(COLUMN_FAMILY_NAME, 2l);
+                table.delete(delete);
 
 //        print("Delete the table");
 //        admin.disableTable(table.getName());
@@ -81,7 +123,7 @@ public class HelloWorld {
                 throw e;
             }
         } catch (IOException e) {
-            System.err.println("Exception while running HelloWorld: " + e.getMessage());
+            System.err.println("Exception while running : " + e.getMessage());
             e.printStackTrace();
 
             System.exit(1);
@@ -99,7 +141,7 @@ public class HelloWorld {
         String projectId = requiredProperty("bigtable.projectID");
         String instanceId = requiredProperty("bigtable.instanceID");
 
-        doHelloWorld(projectId, instanceId);
+        execute(projectId, instanceId);
     }
 
     private static String requiredProperty(String prop) {
